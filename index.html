@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI智能答题系统</title>
+<link rel="stylesheet" href="css/common.css">
+<link rel="stylesheet" href="css/quiz.css">
+</head>
+<body>
+
+<div class="container">
+
+<!-- 顶部导航 -->
+<div class="nav-bar">
+  <div class="brand">
+    <div class="brand-icon">AI</div>
+    <div class="brand-text">AI 智能答题系统</div>
+  </div>
+  <div class="nav-links">
+    <button id="btn-leaderboard" class="nav-link">排行榜</button>
+    <button id="btn-settings" class="nav-link">设置</button>
+    <button id="btn-teacher" class="nav-link">教师后台</button>
+  </div>
+</div>
+
+<!-- 选择界面 -->
+<div id="screen-select">
+  <div class="page-header">
+    <h1>准备好开始答题了吗？</h1>
+    <p>选择班级和知识点，AI生成专属题目</p>
+  </div>
+
+  <div class="card select-card">
+    <div class="form-group">
+      <label>选择班级</label>
+      <select id="sel-class" class="form-select">
+        <option value="">请选择班级</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>选择姓名</label>
+      <select id="sel-name" class="form-select" disabled>
+        <option value="">请先选择班级</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>知识点/题型（输入或选择预设）</label>
+      <input type="text" id="knowledge-input" class="form-input" placeholder="例如：初中英语现在完成时、小学数学分数运算...">
+    </div>
+    <div id="knowledge-presets" class="chip-group" style="margin-bottom:16px;"></div>
+    <div class="form-group">
+      <label>题目数量</label>
+      <select id="question-count" class="form-select">
+        <option value="5">5 题</option>
+        <option value="10" selected>10 题</option>
+        <option value="15">15 题</option>
+        <option value="20">20 题</option>
+      </select>
+    </div>
+    <button id="btn-start" class="btn btn-primary btn-block" disabled>开始答题 →</button>
+  </div>
+</div>
+
+<!-- 加载界面 -->
+<div id="screen-loading" style="display:none;">
+  <div class="loading-screen">
+    <div class="spinner"></div>
+    <p>AI正在生成题目，请稍候...</p>
+    <p id="loading-countdown" style="margin-top:8px;font-size:13px;color:var(--gray-400);"></p>
+  </div>
+</div>
+
+<!-- 答题界面 -->
+<div id="screen-quiz" style="display:none;">
+  <div class="quiz-header">
+    <span id="q-num" style="font-weight:600;">第1题</span>
+    <span id="progress-count">1 / 10</span>
+    <span>正确：<b id="correct-count" style="color:var(--success);">0</b></span>
+    <span>正确率：<b id="accuracy">0%</b></span>
+  </div>
+  <div class="progress-bar" style="margin-bottom:12px;">
+    <div id="progress-fill" class="progress-fill" style="width:0%;"></div>
+  </div>
+  <div class="card quiz-card">
+    <span class="question-num" id="q-index-label">第 1 题</span>
+    <div class="question-text" id="q-text"></div>
+    <div id="q-options" class="options-list"></div>
+    <div id="q-explanation" class="explanation"></div>
+  </div>
+  <div id="next-wrap" style="display:none;text-align:center;">
+    <button id="btn-next" class="btn btn-primary" style="min-width:160px;">下一题</button>
+  </div>
+</div>
+
+<!-- 结果界面 -->
+<div id="screen-result" style="display:none;">
+  <div class="result-header">
+    <h2>答题完成</h2>
+    <p class="player" id="result-player"></p>
+  </div>
+
+  <div class="score-circle">
+    <svg width="120" height="120" viewBox="0 0 140 140">
+      <circle cx="70" cy="70" r="62" fill="none" stroke="var(--gray-200)" stroke-width="10"/>
+      <circle id="score-ring" cx="70" cy="70" r="62" fill="none" stroke="var(--primary)" stroke-width="10" stroke-linecap="round" stroke-dasharray="389.56" stroke-dashoffset="389.56" style="transition: stroke-dashoffset 1s ease;"/>
+    </svg>
+    <div class="score-num" id="score-num">0</div>
+    <div class="score-label">% 正确率</div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-item blue"><div class="num" id="stat-total">0</div><div class="label">总题数</div></div>
+    <div class="stat-item green"><div class="num" id="stat-correct">0</div><div class="label">答对</div></div>
+    <div class="stat-item red"><div class="num" id="stat-wrong">0</div><div class="label">答错</div></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat-item"><div class="num" id="stat-time" style="font-weight:600;">--</div><div class="label">总用时</div></div>
+    <div class="stat-item"><div class="num" id="stat-avg" style="font-weight:600;">--</div><div class="label">平均每题</div></div>
+    <div class="stat-item"><div class="num" id="stat-rank" style="font-weight:600;">--</div><div class="label">排名</div></div>
+  </div>
+
+  <div class="card review-section">
+    <div class="review-header-bar">
+      <b>答题记录</b>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="review-filter">
+          <input type="checkbox" id="review-wrong-only" onchange="Quiz.filterReview()">
+          只看错题
+        </label>
+        <button class="btn btn-sm btn-outline" onclick="Quiz.copyWrongQuestions()">复制错题</button>
+      </div>
+    </div>
+    <div class="review-list" id="review-list"></div>
+  </div>
+
+  <div style="display:flex;gap:8px;">
+    <button id="btn-retry" class="btn btn-primary btn-block">再次答题</button>
+    <button id="btn-view-rank" class="btn btn-outline btn-block">查看排行榜</button>
+  </div>
+</div>
+
+<!-- 排行榜界面 -->
+<div id="screen-leaderboard" style="display:none;">
+  <div class="page-header">
+    <h1>排行榜</h1>
+    <p>学生答题正确率排行</p>
+  </div>
+  <div id="rank-tabs" class="chip-group" style="margin-bottom:12px;"></div>
+  <div id="rank-list"></div>
+  <div style="text-align:center;margin-top:16px;">
+    <button class="btn btn-outline" onclick="Quiz.backFromRank()">返回主页</button>
+  </div>
+</div>
+
+</div>
+
+<!-- 设置模态框 -->
+<div id="modal-settings" class="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('modal-settings').classList.remove('active')">&times;</button>
+    <div class="modal-title">设置</div>
+    <div class="settings-section">
+      <h3>AI 模型设置</h3>
+      <div class="form-group">
+        <label>模型名称</label>
+        <input type="text" id="settings-model" class="form-input" placeholder="例如：LongCat-2.0-Preview">
+      </div>
+      <div class="form-group">
+        <label>API Base URL</label>
+        <input type="text" id="settings-baseurl" class="form-input" placeholder="https://api.longcat.chat/openai">
+      </div>
+      <div class="form-group">
+        <label>API Key（选填，留空使用默认）</label>
+        <input type="password" id="settings-apikey" class="form-input" placeholder="sk-...">
+      </div>
+      <div class="setting-row">
+        <label>关闭模型思考</label>
+        <div class="toggle on" id="settings-thinking" onclick="Quiz.toggleThinking()"></div>
+      </div>
+    </div>
+    <button id="btn-save-settings" class="btn btn-primary btn-block">保存设置</button>
+  </div>
+</div>
+
+<!-- 音效预加载 -->
+<audio id="sound-success" preload="auto" src="sounds/success.mp3"></audio>
+<audio id="sound-fail" preload="auto" src="sounds/fail.mp3"></audio>
+
+<script src="js/config.js" charset="UTF-8"></script>
+<script src="js/api.js" charset="UTF-8"></script>
+<script src="js/storage.js" charset="UTF-8"></script>
+<script src="js/sound.js" charset="UTF-8"></script>
+<script src="js/student.js" charset="UTF-8"></script>
+
+</body>
+</html>
